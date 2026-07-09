@@ -3,6 +3,7 @@ import { glossaryTokens, engineMetrics, type GlossaryToken } from "@/data/sample
 import { SignToSpeechPanel } from "@/components/SignToSpeechPanel";
 import { SpeechToSignPanel } from "@/components/SpeechToSignPanel";
 import { GlossaryModal } from "@/components/GlossaryModal";
+import { FloatingAvatar } from "@/components/FloatingAvatar";
 import {
   BookIcon,
   LockIcon,
@@ -44,6 +45,7 @@ export default function App() {
   const [locked, setLocked] = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [floatingAvatarOpen, setFloatingAvatarOpen] = useState(false);
   
   const [allTokens, setAllTokens] = useState<GlossaryToken[]>(glossaryTokens);
   const [loaded, setLoaded] = useState<Set<string>>(new Set(["SQL", "AI", "QA Testing"]));
@@ -314,6 +316,18 @@ export default function App() {
           "border-t p-4 space-y-3",
           theme === "dark" ? "border-white/5 bg-zinc-950/40" : "border-slate-200 bg-slate-50"
         )}>
+          {/* Screen Overlay Trigger */}
+          <button
+            onClick={() => {
+              setFloatingAvatarOpen(true);
+              setSidebarOpen(false);
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500/10 border border-violet-500/25 px-3 py-2.5 text-[12px] font-bold text-violet-400 hover:bg-violet-500/15 transition active:scale-[0.98]"
+          >
+            <CpuIcon className="h-4 w-4 text-violet-400" />
+            <span>Enter Screen Overlay</span>
+          </button>
+
           {/* Glossary trigger */}
           <button
             onClick={() => {
@@ -473,6 +487,11 @@ export default function App() {
         onToggle={toggleToken}
         onAddCustom={addCustom}
       />
+
+      {/* Floating Screen Overlay Avatar */}
+      {floatingAvatarOpen && (
+        <FloatingAvatar onClose={() => setFloatingAvatarOpen(false)} />
+      )}
     </div>
   );
 }
