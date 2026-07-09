@@ -36,6 +36,18 @@ export function SignToSpeechPanel({ proficiency = "Expert" }: { proficiency?: st
   const onPredictionReceived = useCallback((gloss: string, confidence: number) => {
     setPredictedGloss(gloss);
     setInferenceConfidence(confidence);
+
+    // Speak predicted signs automatically if confidence is sufficient
+    try {
+      if (window.speechSynthesis && confidence > 0.65 && gloss && gloss !== "LISTENING...") {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(gloss.toLowerCase());
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch (err) {
+      console.warn("Speech synthesis failed:", err);
+    }
   }, []);
 
   const { engineReady, runInference } = useTFLiteWorker(onPredictionReceived);
