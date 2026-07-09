@@ -52,7 +52,12 @@ export function useSpeechToSign(
             body: JSON.stringify({
               contents: [{
                 parts: [{
-                  text: `Convert the following text into localized Sign Language grammatical Gloss structure (Caps, dropped particles, clear markers): "${resultText}"`
+                  text: `Convert the following text into localized Sign Language grammatical Gloss structure and provide a brief explanation. You MUST respond in this JSON format:
+{
+  "gloss": "Caps, dropped particles, clear markers (e.g. TRAFFIC SAFETY RULES, TELL-TO-ME)",
+  "explanation": "A brief explanation"
+}
+Text: "${resultText}"`
                 }]
               }]
             })
@@ -60,9 +65,19 @@ export function useSpeechToSign(
 
           if (response.ok) {
             const data = await response.json();
-            const glossOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-            if (glossOutput) {
-              glossTokens = glossOutput.split(/\s+/).filter(Boolean);
+            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            try {
+              const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+              const parsed = JSON.parse(cleanText);
+              const glossOutput = parsed.gloss || "";
+              if (glossOutput) {
+                glossTokens = glossOutput.split(/\s+/).filter(Boolean);
+              }
+            } catch (e) {
+              const match = rawText.match(/"gloss"\s*:\s*"([^"]+)"/);
+              if (match && match[1]) {
+                glossTokens = match[1].split(/\s+/).filter(Boolean);
+              }
             }
           }
         } catch (error) {

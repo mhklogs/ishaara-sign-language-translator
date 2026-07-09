@@ -89,6 +89,7 @@ export default function App() {
   // Translation metrics & engine logs
   const [inputText, setInputText] = useState<string>('');
   const [translatedGloss, setTranslatedGloss] = useState<string>('');
+  const [glossExplanation, setGlossExplanation] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [systemLogs, setSystemLogs] = useState<string[]>(['System initialized. Standing by.']);
 
@@ -204,6 +205,7 @@ export default function App() {
       setTimeout(() => {
         const localGloss = convertToSignGloss(textTarget, dialect === "Pakistani Sign Language" ? "PSL" : "ISL");
         setTranslatedGloss(localGloss.join(' '));
+        setGlossExplanation("Syntactical rearrangement completed via client-side grammar rules.");
         setSystemLogs(prev => [
           `[Local Fallback Output] Mapped tokens: ${localGloss.join(' ')}`,
           `Warning: Gemini API Key placeholder detected. Local translation active.`,
@@ -221,7 +223,12 @@ export default function App() {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `Convert the following text into localized Sign Language grammatical Gloss structure (Caps, dropped particles, clear markers): "${textTarget}"`
+              text: `Convert the following text into localized Sign Language grammatical Gloss structure and provide a brief explanation. You MUST respond in this JSON format:
+{
+  "gloss": "Caps, dropped particles, clear markers (e.g. TRAFFIC SAFETY RULES, TELL-TO-ME)",
+  "explanation": "A brief explanation"
+}
+Text to translate: "${textTarget}"`
             }]
           }]
         })
@@ -232,13 +239,32 @@ export default function App() {
       }
 
       const data = await response.json();
-      const glossOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text || "FAILED_GLOSS_PARSE";
-      setTranslatedGloss(glossOutput);
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      let glossVal = "";
+      let explanationVal = "";
+      
+      try {
+        const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(cleanText);
+        glossVal = parsed.gloss || "";
+        explanationVal = parsed.explanation || "";
+      } catch (e) {
+        // Fallback parsing via regex if not formatted as clean JSON
+        const glossMatch = rawText.match(/"gloss"\s*:\s*"([^"]+)"/);
+        const expMatch = rawText.match(/"explanation"\s*:\s*"([^"]+)"/);
+        glossVal = glossMatch ? glossMatch[1] : rawText;
+        explanationVal = expMatch ? expMatch[1] : "Conversational translation completed.";
+      }
+
+      setTranslatedGloss(glossVal);
+      setGlossExplanation(explanationVal);
       setSystemLogs(prev => [`Success: Extracted gloss via Gemini 2.5 Flash.`, ...prev]);
     } catch (error: any) {
       console.error(error);
       const localGloss = convertToSignGloss(textTarget, dialect === "Pakistani Sign Language" ? "PSL" : "ISL");
       setTranslatedGloss(localGloss.join(' '));
+      setGlossExplanation("Syntactical rearrangement completed via client-side local rules fallback.");
       setSystemLogs(prev => [
         `[Local Fallback Output] Mapped tokens: ${localGloss.join(' ')}`,
         `API Call Failed: ${error.message}. Local translation active.`,
@@ -699,11 +725,22 @@ export default function App() {
                 </button>
               )}
 
-              <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl p-3.5">
-                <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block mb-1">Sign Gloss Sequence</span>
-                <div className="font-tech text-xs text-[var(--brand-accent)] font-extrabold bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)] uppercase tracking-widest min-h-[40px]">
-                  {translatedGloss || '[Awaiting input capture...]'}
+              <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl p-3.5 space-y-3">
+                <div>
+                  <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block mb-1">Sign Gloss Sequence</span>
+                  <div className="font-tech text-xs text-[var(--brand-accent)] font-extrabold bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)] uppercase tracking-widest min-h-[40px]">
+                    {translatedGloss || '[Awaiting input capture...]'}
+                  </div>
                 </div>
+
+                {glossExplanation && (
+                  <div>
+                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block mb-1">Grammar Translation Explanation</span>
+                    <p className="text-xs text-[var(--text-secondary)] bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)] leading-relaxed">
+                      {glossExplanation}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

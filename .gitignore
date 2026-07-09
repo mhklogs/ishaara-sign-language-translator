@@ -30,3 +30,5 @@ archive.zip
 archive/
 project-dataset/
 .vercel
+.env
+.env*.local
