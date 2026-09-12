@@ -2,10 +2,17 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
+import Landing from "./pages/Landing";
+import { useHashRoute } from "./router";
+
+function Root() {
+  const route = useHashRoute();
+  return route === "/app" ? <App key="app" /> : <Landing key="landing" />;
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>
 );
 

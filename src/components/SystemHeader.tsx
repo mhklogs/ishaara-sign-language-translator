@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { engineMetrics } from "@/data/samples";
 import { CpuIcon, GaugeIcon, GlobeIcon, HandIcon, SignalIcon } from "./icons";
-import { MetricBadge, Pill, StatusDot } from "./ui";
+import { MetricBadge, Pill } from "./ui";
 import { cn } from "@/utils/cn";
 
 function useSessionClock() {

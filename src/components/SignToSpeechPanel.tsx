@@ -29,7 +29,6 @@ function Bars({ className }: { className?: string }) {
 }
 
 export function SignToSpeechPanel({ proficiency = "Expert" }: { proficiency?: string }) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [predictedGloss, setPredictedGloss] = useState<string>("");
   const [inferenceConfidence, setInferenceConfidence] = useState<number>(0);
 
@@ -58,8 +57,7 @@ export function SignToSpeechPanel({ proficiency = "Expert" }: { proficiency?: st
 
   const { pushFrame } = useSlidingWindow(handleWindowReady, { windowSize: 30, stride: 5 });
 
-  const { isLoading, isTracking, startTracking, stopTracking } = useMediaPipe(
-    videoRef,
+  const { videoRef, isLoading, isTracking, startTracking, stopTracking } = useMediaPipe(
     pushFrame
   );
 

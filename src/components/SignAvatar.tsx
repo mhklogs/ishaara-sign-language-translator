@@ -1,4 +1,4 @@
-import { Component, useRef, type ReactNode } from "react";
+import { Component, useRef, type ReactNode, type CSSProperties } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -178,12 +178,14 @@ function AvatarFallback() {
 export function SignAvatar({
   gesture,
   className,
+  style,
 }: {
   gesture: AvatarGesture;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative", className)} style={style}>
       <GLBoundary fallback={<AvatarFallback />}>
         <Canvas
           dpr={[1, 2]}

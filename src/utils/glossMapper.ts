@@ -7,7 +7,7 @@ const QUESTION_WORDS = ['what', 'why', 'where', 'when', 'how', 'who'];
 /**
  * Transforms spoken English sentences into structured Sign Language Gloss syntax.
  */
-export function convertToSignGloss(sentence: string, dialect: Dialect = 'PSL'): string[] {
+export function convertToSignGloss(sentence: string, _dialect: Dialect = 'PSL'): string[] {
   // 1. Clean and tokenize the input text
   let words = sentence
     .toLowerCase()

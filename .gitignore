@@ -32,3 +32,13 @@ project-dataset/
 .vercel
 .env
 .env*.local
+
+# User-recorded sign datasets & trained models (generated in-app / by train_collected.py)
+public/models/
+
+# Built browser extension (rebuild with npm run build:extension)
+extension/dist/
+extension/icons/
+
+# Standalone screenshot-ready frontends (rebuilt with npm run build:frontends)
+frontends/

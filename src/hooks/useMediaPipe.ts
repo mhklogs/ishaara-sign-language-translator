@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { normalizeLandmarks, Landmark } from '../utils/normalize';
 
 interface UseMediaPipeResult {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   isLoading: boolean;
   isTracking: boolean;
   startTracking: () => void;
@@ -18,9 +19,9 @@ function padOrSliceLandmarks(landmarks: Landmark[], targetSize: number): Landmar
 }
 
 export function useMediaPipe(
-  videoRef: React.RefObject<HTMLVideoElement | null>,
   onFrameProcessed: (flattenedCoords: number[]) => void
 ): UseMediaPipeResult {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isTracking, setIsTracking] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,17 +129,17 @@ export function useMediaPipe(
       }
       holisticRef.current = null;
     }
-  }, [videoRef]);
+  }, []);
 
-  // Simulating MediaPipe bundle load and instance setup
+  // Pre-warm MediaPipe bundle load so first camera start is instant
   useEffect(() => {
     async function initMediaPipe() {
       setIsLoading(true);
       try {
         await loadMediaPipeScripts();
-        setIsLoading(false);
       } catch (err) {
         setError('Failed to initialize MediaPipe Holistic engine.');
+      } finally {
         setIsLoading(false);
       }
     }
@@ -217,7 +218,7 @@ export function useMediaPipe(
       setError(err.message || "Failed to initialize MediaPipe Holistic.");
       stopTracking();
     }
-  }, [videoRef, handleResults, loadMediaPipeScripts, stopTracking]);
+  }, [handleResults, loadMediaPipeScripts, stopTracking]);
 
-  return { isLoading, isTracking, startTracking, stopTracking, error };
+  return { videoRef, isLoading, isTracking, startTracking, stopTracking, error };
 }

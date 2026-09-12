@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "ISHAARA — Sign Anywhere",
+  "short_name": "ISHAARA",
+  "version": "0.1.0",
+  "description": "Select text on any website and watch a 3D avatar perform it in sign language gloss — live, on-device.",
+  "author": "ISHAARA FYP",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_title": "ISHAARA — sign this page"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["player.html", "player.js", "player.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

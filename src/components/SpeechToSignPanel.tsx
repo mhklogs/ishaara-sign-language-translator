@@ -49,7 +49,6 @@ export function SpeechToSignPanel({ dialect = "Pakistani Sign Language" }: { dia
   }, []);
 
   const {
-    isListening: isMicListening,
     transcription,
     glossResult,
     startListening,

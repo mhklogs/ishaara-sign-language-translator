@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { XIcon, HandIcon, FaceIcon, PlusIcon, ChevronRightIcon } from "./icons";
+import { XIcon, HandIcon, FaceIcon } from "./icons";
 import { SignAvatar } from "./SignAvatar";
 import { cn } from "@/utils/cn";
 

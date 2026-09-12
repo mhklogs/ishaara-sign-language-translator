@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { glossaryTokens, engineMetrics, type GlossaryToken } from "@/data/samples";
 import { GlossaryModal } from "@/components/GlossaryModal";
 import { FloatingAvatar } from "@/components/FloatingAvatar";
@@ -7,6 +7,8 @@ import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { useSlidingWindow } from "@/hooks/useSlidingWindow";
 import { useTFLiteWorker } from "@/hooks/useTFLiteWorker";
 import { useSpeechToSign } from "@/hooks/useSpeechToSign";
+import { useSignDataset } from "@/hooks/useSignDataset";
+import { SignRecorder } from "@/components/SignRecorder";
 import { convertToSignGloss } from "@/utils/glossMapper";
 import {
   BookIcon,
@@ -20,7 +22,8 @@ import {
   CpuIcon,
   GaugeIcon,
   GlobeIcon,
-  MicIcon
+  MicIcon,
+  CameraIcon
 } from "@/components/icons";
 import { Pill, StatusDot, SectionLabel, MetricBadge } from "@/components/ui";
 import { cn } from "@/utils/cn";
@@ -75,6 +78,10 @@ export default function App() {
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [floatingAvatarOpen, setFloatingAvatarOpen] = useState(false);
+  const [recorderOpen, setRecorderOpen] = useState(false);
+
+  const { labels, counts, totalSamples, addSample, clearLabel, exportJSON, importJSON } =
+    useSignDataset();
   
   const [allTokens, setAllTokens] = useState<GlossaryToken[]>(glossaryTokens);
   const [loaded, setLoaded] = useState<Set<string>>(new Set(["SQL", "AI", "QA Testing"]));
@@ -130,20 +137,31 @@ export default function App() {
   }, []);
 
   const {
-    predictGesture,
-    isModelLoading: tfliteLoading,
+    runInference,
+    engineSource,
     engineReady: tfliteReady
   } = useTFLiteWorker(onGesturePredicted);
 
-  // Pipe MediaPipe coordinates to TFLite
+  // Sliding 24-frame window drives the on-device classifier (stride 6 frames)
+  const onWindowReady = useCallback((windowTensor: number[][]) => {
+    runInference(windowTensor);
+  }, [runInference]);
+
+  const { pushFrame } = useSlidingWindow(onWindowReady, {
+    windowSize: 24,
+    stride: 6,
+    coordinateCount: 1629,
+  });
+
+  // Pipe MediaPipe coordinates into the sliding window
   const onFrameCaptured = useCallback((coordinatesFlat: number[]) => {
-    predictGesture(coordinatesFlat);
-  }, [predictGesture]);
+    pushFrame(coordinatesFlat);
+  }, [pushFrame]);
 
   const {
     videoRef,
     isTracking: isCamActive,
-    isModelLoading: mediaPipeLoading,
+    isLoading: mediaPipeLoading,
     startTracking: startCamTracking,
     stopTracking: stopCamTracking,
   } = useMediaPipe(onFrameCaptured);
@@ -474,6 +492,23 @@ Text to translate: "${textTarget}"`
 
         {/* Sidebar Footer Details & Theme Toggles */}
         <div className="border-t p-4 space-y-3 border-[var(--border-color)] bg-[var(--bg-surface)]">
+          {/* Dataset Recorder Trigger */}
+          <button
+            onClick={() => {
+              setRecorderOpen(true);
+              setSidebarOpen(false);
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500/10 border border-rose-500/25 px-3 py-2.5 text-[12px] font-bold text-rose-400 hover:bg-rose-500/15 transition active:scale-[0.98]"
+          >
+            <CameraIcon className="h-4 w-4" />
+            <span>Record Signs</span>
+            {totalSamples > 0 && (
+              <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 font-tech text-[9.5px] font-bold text-rose-300">
+                {totalSamples}
+              </span>
+            )}
+          </button>
+
           {/* Screen Overlay Trigger */}
           <button
             onClick={() => {
@@ -593,8 +628,19 @@ Text to translate: "${textTarget}"`
           </div>
 
           <div className="flex items-center gap-2.5">
+            <span className={cn(
+              "text-[10.5px] font-mono px-2 py-0.5 rounded border",
+              "bg-[var(--bg-surface)] border-[var(--border-color)]",
+              !tfliteReady
+                ? "text-zinc-500"
+                : engineSource === "model"
+                  ? "text-[var(--brand-primary)] font-bold"
+                  : "text-amber-500"
+            )}>
+              SIGN ENGINE: {!tfliteReady ? "INITIALIZING…" : engineSource === "model" ? "ON-DEVICE MODEL" : "NO MODEL — RECORD + TRAIN"}
+            </span>
             <span className="text-[10.5px] font-mono text-[var(--text-secondary)] bg-[var(--bg-surface)] px-2 py-0.5 rounded border border-[var(--border-color)]">
-              API Status: {hasValidApiKey ? 'CONNECTED' : 'MOCK FALLBACK ACTIVE'}
+              API: {hasValidApiKey ? 'CONNECTED' : 'MOCK FALLBACK'}
             </span>
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-primary)] animate-pulse" />
           </div>
@@ -650,10 +696,10 @@ Text to translate: "${textTarget}"`
                     onClick={isCamActive ? stopCamTracking : startCamTracking}
                     className={cn(
                       "w-full font-bold py-2 px-3 rounded-xl transition text-xs",
-                      isCamActive ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-[var(--brand-primary)] text-[var(--bg-main)]'
+                      isCamActive ? 'bg-red-500 hover:bg-red-600 text-white' : mediaPipeLoading ? 'bg-zinc-600 text-white cursor-wait' : 'bg-[var(--brand-primary)] text-[var(--bg-main)]'
                     )}
                   >
-                    {isCamActive ? 'Stop Camera' : 'Start Camera'}
+                    {isCamActive ? 'Stop Camera' : mediaPipeLoading ? 'Loading Engine…' : 'Start Camera'}
                   </button>
                 </div>
               )}
@@ -824,6 +870,19 @@ Text to translate: "${textTarget}"`
         loaded={loaded}
         onToggle={toggleToken}
         onAddCustom={addCustom}
+      />
+
+      {/* Sign Sample Recorder overlay */}
+      <SignRecorder
+        open={recorderOpen}
+        labels={labels}
+        counts={counts}
+        total={totalSamples}
+        onAddSample={addSample}
+        onClearLabel={clearLabel}
+        onExport={exportJSON}
+        onImport={importJSON}
+        onClose={() => setRecorderOpen(false)}
       />
 
       {/* Floating Screen Overlay Avatar */}
