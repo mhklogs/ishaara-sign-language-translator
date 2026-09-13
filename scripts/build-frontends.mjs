@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, renameSync, rmSync, mkdirSync } from "node:fs";
+import path from "node:path";
 
 const ENTRIES = [
   "landing",
@@ -21,6 +22,7 @@ for (const entry of ENTRIES) {
     continue;
   }
   console.log(`\n── Building frontend: ${entry} ─────────────────`);
+  rmSync(path.join(outRoot, entry), { recursive: true, force: true });
   try {
     execSync("npx vite build --config scripts/vite.frontend.config.ts", {
       env: { ...process.env, VITE_FRONTEND_ENTRY: entry, VITE_FRONTEND_OUT: outRoot },
@@ -30,6 +32,20 @@ for (const entry of ENTRIES) {
   } catch (err) {
     failed.push(entry);
     console.error(`✗ ${entry} failed`);
+    continue;
+  }
+
+  // Vite keeps the entry's folder chain (root=project). Flatten the output back
+  // to <outDir>/index.html so the result is double-clickable as before.
+  const relChain = path.join(outRoot, entry, "src", "frontends", entry);
+  const direct = path.join(outRoot, entry);
+  if (existsSync(relChain)) {
+    mkdirSync(direct, { recursive: true });
+    for (const file of readdirSync(relChain)) {
+      renameSync(path.join(relChain, file), path.join(direct, file));
+    }
+    rmSync(path.join(outRoot, entry, "src"), { recursive: true, force: true });
+    console.log(`  → flattened ${entry} output`);
   }
 }
 

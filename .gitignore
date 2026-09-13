@@ -41,4 +41,4 @@ extension/dist/
 extension/icons/
 
 # Standalone screenshot-ready frontends (rebuilt with npm run build:frontends)
-frontends/
+/frontends/

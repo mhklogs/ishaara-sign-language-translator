@@ -18,7 +18,11 @@ if (!entry) {
 }
 
 export default defineConfig({
-  root: entryDir,
+  // Root must be the whole project so Tailwind v4 scans the real component
+  // sources (src/pages, src/components, ...). Pinning just this entry's HTML
+  // keeps each build output to a single standalone page.
+  root: projectRoot,
+  publicDir: false,
   base: "./",
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: {
@@ -32,5 +36,8 @@ export default defineConfig({
     target: "es2020",
     assetsInlineLimit: 100000000,
     cssCodeSplit: false,
+    rollupOptions: {
+      input: path.join(entryDir, "index.html"),
+    },
   },
 });
