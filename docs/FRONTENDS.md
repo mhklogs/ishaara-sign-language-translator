@@ -23,6 +23,10 @@ npm run build:frontends      # rebuilds every folder under frontends/
 npm run build:all            # main app + extension + all frontends
 ```
 
+The Vercel deployment (`vercel.json`) runs the frontends build again into
+`dist/frontends/`, so each one is also live at
+`https://<your-site>.vercel.app/frontends/<name>/index.html`.
+
 ## How it works
 
 - **Source** for each frontend: `src/frontends/<name>/main.tsx` + `index.html`.

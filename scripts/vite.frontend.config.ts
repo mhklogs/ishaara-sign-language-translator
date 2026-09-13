@@ -9,8 +9,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
 
 const entry = process.env.VITE_FRONTEND_ENTRY || "";
+const outRoot = process.env.VITE_FRONTEND_OUT || "frontends";
 const entryDir = path.join(projectRoot, "src", "frontends", entry);
-const outDir = path.join(projectRoot, "frontends", entry);
+const outDir = path.join(projectRoot, outRoot, entry);
 
 if (!entry) {
   throw new Error("VITE_FRONTEND_ENTRY is required");

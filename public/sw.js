@@ -1,57 +1,70 @@
 // public/sw.js
-const CACHE_NAME = 'sasl-v1-cache';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/src/main.tsx',
-  '/models/sasl_transformer_quantized.tflite', // The core 500-sign baseline model layer
-  '/animations/hello.glb',
-  '/animations/thank_you.glb'
-];
+const CACHE_NAME = "ishaara-v2";
+const PRECACHE = ["/", "/index.html"];
 
-// Installation phase: Lock static asset bundles in memory cache
-self.addEventListener('install', (event) => {
+// Install: precache the app shell (per-request so a missing file can't kill install).
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => Promise.allSettled(PRECACHE.map((url) => cache.add(url))))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-// Activation phase: Clean outdated historical schemas
-self.addEventListener('activate', (event) => {
+// Activate: purge any stale caches from older versions and take control of open tabs.
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
+
+  const isDocument = request.mode === "navigate";
+
+  if (isDocument) {
+    // Network-first: always serve the newest index.html after a deploy,
+    // falling back to the cached shell only when offline.
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(request, copy));
+          }
+          return response;
         })
-      );
-    })
-  );
-  self.clients.claim();
-});
+        .catch(() =>
+          caches
+            .match(request)
+            .then((cached) => cached || caches.match("/index.html"))
+        )
+    );
+    return;
+  }
 
-// Intercept routing streams: Cache-first validation strategy for fast execution
-self.addEventListener('fetch', (event) => {
+  // Stale-while-revalidate for static assets: return the cache instantly,
+  // refresh it from the network in the background.
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse; // Instantly return resource from cache if offline
-      }
-      return fetch(event.request).then((networkResponse) => {
-        // Cache newly discovered network files dynamically
-        if (event.request.method === 'GET' && networkResponse.status === 200) {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-        }
-        return networkResponse;
-      });
-    }).catch(() => {
-      // Fallback routing logic if connection fails completely
+    caches.match(request).then((cached) => {
+      const network = fetch(request)
+        .then((response) => {
+          if (response.ok && new URL(request.url).origin === self.location.origin) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => cached);
+      return cached || network;
     })
   );
 });
