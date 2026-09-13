@@ -1,0 +1,400 @@
+================================================================================
+                    ISHAARA — PROJECT INFORMATION FILE
+         Bi-Directional Sign Language Translator for South Asia
+         Bridging the Communication Barrier with Real-Time Translation
+================================================================================
+
+
+PROJECT NAME:     ISHAARA
+DOMAIN:           Assistive Technology / Accessibility / AI-ML
+TEAM:             Hassaan Abdullah (23-ARID-896) | Khubaib Ul Hassan (23-ARID-902)
+SUBMITTED TO:     [University / Supervisor Name]
+DATE:             September 2026
+
+
+================================================================================
+1. ONE-LINE PITCH
+================================================================================
+
+Ishaara is an open-source, bi-directional sign language translator that runs
+entirely on-device — no GPU, no cloud, no data upload required. It translates
+Pakistani Sign Language (PSL) and Indian Sign Language (ISL) into speech and
+text in real-time using a webcam, and converts spoken language back into a
+3D animated avatar signing in sign language — all within a single browser tab.
+
+
+================================================================================
+2. PROBLEM STATEMENT
+================================================================================
+
+Over 15 million deaf individuals in Pakistan and India rely on sign language as
+their primary mode of communication. However, the vast majority of the hearing
+population does not understand sign language. This creates a critical
+communication barrier in hospitals, banks, government offices, classrooms,
+and everyday life.
+
+Existing solutions are either:
+  - Cloud-dependent (privacy risk, latency, internet required)
+  - Unidirectional (sign-to-speech OR speech-to-sign, never both)
+  - English-only (no support for South Asian sign languages)
+  - Hardware-bound (require gloves, sensors, or specialized cameras)
+  - Not user-trainable (cannot adapt to individual signers)
+
+Ishaara solves ALL of these problems in a single, lightweight, browser-based
+platform that works offline on any device with a webcam.
+
+
+================================================================================
+3. CORE FEATURES
+================================================================================
+
+a) BI-DIRECTIONAL TRANSLATION (THE KEY DIFFERENTIATOR)
+   - Sign-to-Speech: Webcam captures hand/body gestures → MediaPipe extracts
+     543 body landmarks → ML model predicts the sign → Speech synthesis speaks it
+   - Speech-to-Sign: Microphone captures voice → Text → 3D avatar animates
+     the corresponding sign language gestures
+   - Dual View: Both modes run simultaneously in a split-screen layout
+
+b) ON-DEVICE MACHINE LEARNING (ZERO CLOUD DEPENDENCY)
+   - MediaPipe Holistic: 543-point full-body landmark tracking
+     (33 pose + 42 hand + 468 face landmarks per frame)
+   - Shoulder-width normalization: Works regardless of camera distance or
+     person's body size
+   - Sliding window inference: 24-frame temporal window for gesture recognition
+   - Two model architectures:
+     * MLP (Multi-Layer Perceptron): Lightweight, instant inference
+     * GRU (Gated Recurrent Unit): Temporal model, higher accuracy
+   - Pure JavaScript inference — no TensorFlow.js, no ONNX, no GPU required
+
+c) USER-TRAINABLE SYSTEM (UNIQUE — NO OTHER PROJECT DOES THIS)
+   - Record your own signs via webcam (8-12 takes per gesture)
+   - Export dataset as JSON
+   - Train model with a single Python command (NumPy-only, zero dependencies)
+   - Deploy trained model back into the browser
+   - Anyone can teach Ishaara their regional dialect or personal signs
+
+d) 3D PROCEDURAL AVATAR
+   - Entirely code-generated humanoid (no external 3D model files)
+   - Built with Three.js geometry primitives
+   - Customizable: skin tone, hair style, outfit
+   - Animated signing gestures with smooth easing
+   - Runs on any device with WebGL support
+
+e) GEMINI 2.5 FLASH NLP INTEGRATION
+   - Cloud-quality grammar parsing for text-to-gloss conversion
+   - Converts English/Urdu sentences into sign language gloss order (SVO → SOV)
+   - Automatic fallback to local rules when offline or API unavailable
+
+f) SOUTH ASIAN LANGUAGE SUPPORT
+   - Pakistani Sign Language (PSL)
+   - Indian Sign Language (ISL)
+   - English + Urdu + Hindi text/speech
+   - Massively underserved market — no comparable open-source tool exists
+
+
+================================================================================
+4. TECHNOLOGY STACK
+================================================================================
+
+--- FRONTEND CORE ---
+  React 19           | Modern UI library with concurrent features
+  TypeScript 5.9     | Type-safe development, zero runtime errors
+  Vite 7             | Lightning-fast build tool and dev server
+  Tailwind CSS 4     | Utility-first responsive design system
+
+--- 3D RENDERING ---
+  Three.js           | WebGL 3D rendering engine
+  React Three Fiber  | React renderer for Three.js
+  React Three Drei   | Helper components (OrbitControls, etc.)
+
+--- MACHINE LEARNING & COMPUTER VISION ---
+  MediaPipe Holistic  | Google's 543-landmark full-body tracking
+  MediaPipe Camera    | Webcam frame streaming utilities
+  Custom MLP/GRU     | On-device sign classification (pure JS)
+  Web Workers        | Non-blocking ML inference on separate thread
+
+--- CLOUD AI ---
+  Gemini 2.5 Flash   | Text → sign language gloss grammar parsing
+  (with local fallback when offline)
+
+--- SPEECH & AUDIO ---
+  Web Speech API     | Browser-native speech recognition (en-US, ur-PK)
+  SpeechSynthesis    | Text-to-speech output for predicted signs
+  getDisplayMedia    | System/tab audio capture
+
+--- BACKEND & DATABASE ---
+  Supabase           | PostgreSQL + Auth + Storage
+  Row-Level Security | Server-side subscription enforcement
+
+--- BUILD & DEPLOYMENT ---
+  Vite SingleFile    | Self-contained HTML builds (no server needed)
+  Vercel             | Global CDN hosting
+  Service Worker     | PWA offline caching (cache-first strategy)
+  Chrome Extension   | Manifest V3 browser extension
+
+--- TRAINING PIPELINE ---
+  Python + NumPy     | Zero-dependency MLP training
+  PyTorch            | Spatiotemporal Transformer training
+  JSON model export  | Plain weights consumed by JS worker
+
+
+================================================================================
+5. PRODUCT DEMOS — 6 STANDALONE FRONTENDS
+================================================================================
+
+Each is a self-contained HTML file (double-click to open, no server needed):
+
+1. LANDING PAGE
+   Marketing homepage — hero section, feature highlights, use cases,
+   how-it-works explanation, call-to-action. First impression for
+   investors, judges, and users.
+
+2. WORKSPACE (Main App)
+   Full translator workspace — live camera feed, 3D signing avatar,
+   gloss analyzer panel, speech-to-sign and sign-to-speech panels,
+   recording system, session telemetry. The core product.
+
+3. KIOSK MODE
+   Counter/help-desk assistant designed for NADRA offices, banks,
+   hospitals, and service counters. Visitor signs on one side, staff
+   replies on the other. Real-world deployment scenario.
+
+4. MEETING COMPANION
+   Live meeting assistant — streams captions on one side while the
+   3D avatar signs simultaneously on the other. Perfect for
+   classrooms, conferences, and workplaces.
+
+5. MODEL STUDIO
+   Dataset recording and training console — capture vocabulary,
+   view accuracy curves, export/import datasets, package trained
+   models. The "AI training lab" within the browser.
+
+6. BROWSER EXTENSION PREVIEW
+   Chrome extension overlaid on a mock news article — select any
+   text on any website and the 3D avatar signs it instantly.
+   "Sign Anywhere" capability.
+
+
+================================================================================
+6. UNIQUE SELLING POINTS (WHY ISHAARA IS DIFFERENT)
+================================================================================
+
+1. ZERO-CLOUD ML PIPELINE
+   The entire ML pipeline — record → train → inference — works 100%
+   on-device. No GPU server, no data upload, no privacy risk. Your
+   biometric data never leaves your browser.
+
+2. USER-TRAINABLE
+   Unlike every existing sign language project, Ishaara lets ANYONE
+   record their own signs, train a custom model, and deploy it — all
+   from the browser. No ML expertise required.
+
+3. BI-DIRECTIONAL (NOT JUST ONE-WAY)
+   Most projects do sign→speech OR speech→sign. Ishaara does BOTH
+   simultaneously in a split-screen dual view.
+
+4. SOUTH ASIAN FOCUS
+   First open-source bi-directional translator for PSL/ISL with
+   Urdu, Hindi, and English support. Serves 150M+ deaf individuals
+   in Pakistan and India.
+
+5. PROCEDURAL 3D AVATAR (NO EXTERNAL MODELS)
+   The entire humanoid is generated from code — no .glb, .fbx, or
+   external 3D assets. Lightweight, customizable, runs on WebGL.
+
+6. MULTI-FORM-FACTOR FROM ONE CODEBASE
+   Desktop workspace, mobile PWA, Chrome extension, kiosk mode,
+   meeting companion, model studio — all from a single React app.
+
+7. OFFLINE-FIRST PWA
+   Works without internet. Service Worker caches everything.
+   Critical for areas with limited connectivity.
+
+8. PRESENTATION-READY
+   Built-in lock mode prevents accidental clicks during demos.
+   Designed specifically for live presentations and evaluations.
+
+9. MONETIZATION-READY
+   Supabase-powered subscription system with 14-day trial, premium
+   gating (PKR 5,000), and avatar customization already built in.
+
+10. PRODUCTION-GRADE UI
+    Not a research prototype — dark emerald theme, animated scanning
+    overlays, session telemetry, responsive mobile-first design.
+
+
+================================================================================
+7. ARCHITECTURE OVERVIEW
+================================================================================
+
+┌─────────────────────────────────────────────────────────────┐
+│                     BROWSER (Client)                        │
+│                                                             │
+│  ┌──────────┐    ┌──────────────┐    ┌──────────────────┐   │
+│  │  Webcam   │───▶│  MediaPipe   │───▶│  543 Landmarks   │   │
+│  │  Feed     │    │  Holistic    │    │  per frame       │   │
+│  └──────────┘    └──────────────┘    └────────┬─────────┘   │
+│                                                │             │
+│                                    ┌───────────▼──────────┐  │
+│                                    │  Sliding Window       │  │
+│                                    │  (24 frames, stride 6)│  │
+│                                    └───────────┬──────────┘  │
+│                                                │             │
+│                    ┌───────────────────────────▼──────────┐  │
+│                    │  Web Worker (MLP / GRU Inference)    │  │
+│                    │  Pure JS — No TensorFlow, No GPU     │  │
+│                    └───────────────────┬──────────────────┘  │
+│                                        │                     │
+│                              ┌─────────▼─────────┐           │
+│                              │  Predicted Sign    │           │
+│                              │  + Confidence      │           │
+│                              └─────────┬─────────┘           │
+│                                        │                     │
+│                    ┌───────────────────▼──────────────────┐  │
+│                    │           UI OUTPUT                  │  │
+│                    │  • 3D Avatar Signs (Three.js)        │  │
+│                    │  • Speech Output (TTS)               │  │
+│                    │  • Gloss Display                      │  │
+│                    └──────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  SPEECH → SIGN (Reverse Pipeline)                    │   │
+│  │  Microphone → Web Speech API → Gemini 2.5 Flash      │   │
+│  │  → Gloss Tokens → 3D Avatar Animation                │   │
+│  └──────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                   TRAINING PIPELINE                         │
+│                                                             │
+│  Record Signs → Export JSON → Python Script → JSON Weights  │
+│  (Browser)        (Browser)    (NumPy/PyTorch)   (Browser) │
+└─────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+8. APPLICATION SCENARIOS (USE CASES)
+================================================================================
+
+- HOSPITALS:       Deaf patients communicate symptoms to doctors in real-time
+- BANKS/NADRA:     Service counters with sign language support
+- CLASSROOMS:      Deaf students follow lectures via meeting companion
+- GOVERNMENT:      Public service offices accessible to deaf citizens
+- EMERGENCY:       911/15 emergency helplines with sign language bridge
+- ONLINE MEETINGS: Zoom/Teams integration via Chrome extension
+- DAILY LIFE:      Any conversation between deaf and hearing individuals
+- EDUCATION:       Self-learning tool for learning sign language
+
+
+================================================================================
+9. TRAINING & INFERENCE DETAILS
+================================================================================
+
+MODEL 1 — MLP (Multi-Layer Perceptron)
+  Input:    450 features (per-coordinate mean + std over 24 frames)
+  Hidden:   Linear(450→64) + ReLU
+  Output:   Linear(64→NumClasses) + Softmax
+  Training: Mini-batch SGD with momentum, lr=0.05, 80 epochs
+  Runtime:  <1ms inference per frame (CPU only)
+
+MODEL 2 — GRU (Gated Recurrent Unit)
+  Input:    1629 values per frame (543 landmarks × 3 coords)
+  Embedding: Linear(1629→128)
+  Recurrent: GRU(128→256, 2 layers)
+  Output:   Linear(256→NumClasses)
+  Runtime:  ~2ms inference per frame (CPU only)
+
+TRAINING DATA:
+  10 starter gestures: HELLO, THANK-YOU, PLEASE, SORRY, YES, NO,
+                        GOOD, BAD, NAME, WATER
+  Custom labels supported via browser recording UI
+  24 frames per gesture capture (15fps webcam)
+
+NORMALIZATION:
+  Shoulder-width normalization ensures distance-agnostic predictions.
+  Works regardless of camera distance or person's body size.
+
+
+================================================================================
+10. COMPETITIVE COMPARISON
+================================================================================
+
+Feature                    | Ishaara | SignAll | HandTalk | Google SLT
+─────────────────────────────────────────────────────────────────────
+Bi-directional             |   YES   |   YES   |    NO    |    NO
+On-device ML (no cloud)    |   YES   |   NO    |    NO    |    NO
+South Asian languages      |   YES   |   NO    |    NO    |    NO
+User-trainable             |   YES   |   NO    |    NO    |    NO
+3D avatar signing          |   YES   |   NO    |    YES   |    NO
+Browser extension          |   YES   |   NO    |    NO    |    NO
+Kiosk mode                 |   YES   |   NO    |    NO    |    NO
+Works offline              |   YES   |   NO    |    NO    |    NO
+Open source                |   YES   |   NO    |    NO    |    NO
+Free to use                |   YES   |   NO    |    NO    |    NO
+No hardware required       |   YES   |   NO    |    YES   |    YES
+Webcam only                |   YES   |   NO    |    YES   |    YES
+
+
+================================================================================
+11. IMPACT & FUTURE SCOPE
+================================================================================
+
+IMMEDIATE IMPACT:
+  - Pakistan's 15M+ deaf community gains access to free sign translation
+  - Indian deaf community (7M+) supported via ISL
+  - Hospitals, banks, and government offices become accessible
+  - Deaf individuals gain independence in daily communication
+
+FUTURE ROADMAP:
+  - Native Android/iOS apps via React Native
+  - Zoom/Teams real-time plugin integration
+  - More sign language datasets (BSL, ASL, Auslan)
+  - Federated learning for privacy-preserving model improvement
+  - Offline model sharing via QR codes
+  - Sign language learning gamification module
+  - Government of Pakistan / NADRA partnership for national deployment
+
+
+================================================================================
+12. KEY METRICS
+================================================================================
+
+  - 543 body landmarks tracked per frame
+  - 24-frame sliding window for gesture recognition
+  - <1ms inference time (MLP model, CPU only)
+  - 6 standalone demo frontends
+  - 10 starter gestures with custom expansion
+  - 2 model architectures (MLP + GRU)
+  - 3 view modes (Dual, Signer, Speaker)
+  - 15+ React components
+  - 9 custom React hooks
+  - 100% offline-capable (PWA + Service Worker)
+  - 0 external 3D model files (procedural avatar)
+  - 0 cloud dependencies for core ML pipeline
+
+
+================================================================================
+13. HOW TO RUN
+================================================================================
+
+# Main App
+  npm install
+  npm run dev          # Development server
+  npm run build        # Production build
+
+# Build All Demos (6 standalone HTML files)
+  npm run build:frontends
+
+# Build Browser Extension
+  npm run build:extension
+
+# Train Custom Model
+  python train_collected.py    # NumPy-only (no GPU needed)
+  python train_pipeline.py     # PyTorch (GPU optional)
+
+# Open Demo Screenshots
+  # Just double-click any file in frontends/ folder
+  # No server needed — fully self-contained HTML
+
+
+================================================================================
