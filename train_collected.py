@@ -3,23 +3,29 @@
 train_collected.py — Train the small ISHAARA sign classifier on a JSON dataset
 exported from the in-app Sign Sample Recorder ("Export JSON").
 
-Requires ONLY numpy (no PyTorch — keeps setup light on this machine).
+Supports two architectures selected via --arch:
+  mlp  — pure numpy MLP (no extra deps beyond numpy)
+  gru  — PyTorch tiny GRU with tanh embedding (requires torch)
 
-Features: per-landmark mean + std over the 24-frame window, using the first
+Features: per-landmark frames over the 24-frame window, using the first
 225 coordinates of each frame (pose 33 + left hand 21 + right hand 21
 landmarks, x/y/z each) — matches MediaPipe output ordering used by
 src/hooks/useLandmarkCapture.ts.
 
-Model (real, tiny, runs 100% on-device in pure JS):
+MLP model (format "ishaara-sign-mlp-v1"):
   Linear(450 -> 64) + ReLU  ->  Linear(64 -> C)  ->  softmax
 
+GRU model (format "ishaara-sign-gru-v1"):
+  Linear(225 -> 32) + tanh  ->  GRUCell(32, 64)  ->  Linear(64 -> C)  ->  softmax
+
 Usage:
-  .venv/bin/python train_collected.py
-  .venv/bin/python train_collected.py --data path.json --out public/models/sign_model_v1.json --epochs 80
+  .venv/bin/python train_collected.py                                    # MLP (default, numpy only)
+  .venv/bin/python train_collected.py --arch gru                         # GRU (needs torch)
+  .venv/bin/python train_collected.py --arch gru --data path.json --out public/models/sign_model_v1.json --epochs 80
 
 Output:
   public/models/sign_model_v1.json — plain-JSON weights consumed by
-  src/workers/tflite.worker.ts (format "ishaara-sign-mlp-v1").
+  src/workers/tflite.worker.ts (format depends on --arch).
 """
 
 import argparse
@@ -92,9 +98,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default="public/models/ishaara-dataset.json")
     parser.add_argument("--out", default="public/models/sign_model_v1.json")
+    parser.add_argument("--arch", choices=["mlp", "gru"], default="gru",
+                        help="mlp: numpy-only 2-layer MLP; gru: PyTorch GRU (default gru)")
     parser.add_argument("--epochs", type=int, default=80)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch", type=int, default=16)
+    parser.add_argument("--lr", type=float, default=0.001, help="learning rate (GRU: Adam, MLP: SGD)")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -152,6 +161,11 @@ def main():
     Fte = np.stack([extract_features(normed[i]) for i in test_idx]).astype(np.float32)
     Ytr = yenc[train_idx]
     Yte = yenc[test_idx]
+
+    if args.arch == "gru":
+        train_gru(samples, usable, labels, lab2idx, windows, yenc, mean, std,
+                  train_idx, test_idx, args)
+        return
 
     # numeric gradient check on a tiny probe before real init
     _check_gradients()
@@ -251,7 +265,137 @@ def main():
         json.dump(payload, f)
 
     kb = os.path.getsize(args.out) / 1024
-    print(f"💾 Model exported → {args.out} ({kb:.0f} KB)")
+    print(f"💾 MLP model exported → {args.out} ({kb:.0f} KB)")
+    print(f"   Live inference will activate in the app for: {', '.join(labels)}")
+
+
+def train_gru(samples, usable, labels, lab2idx, windows, yenc, mean, std,
+              train_idx, test_idx, args):
+    """Train a tiny GRU classifier with torch and export as ishaara-sign-gru-v1."""
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import DataLoader, TensorDataset
+
+    C = len(labels)
+    EMBED_DIM = 32
+    GRU_DIM = 64
+
+    # ---- dataset prep (pass raw un-normalised windows; normalisation lives in the embedding) ----
+    win_train = torch.tensor(windows[train_idx], dtype=torch.float32)
+    win_test  = torch.tensor(windows[test_idx],  dtype=torch.float32)
+    y_train   = torch.tensor(yenc[train_idx],    dtype=torch.long)
+    y_test    = torch.tensor(yenc[test_idx],     dtype=torch.long)
+    mean_t    = torch.tensor(mean, dtype=torch.float32)
+    std_t     = torch.tensor(std,  dtype=torch.float32)
+
+    ds = TensorDataset(win_train, y_train)
+    dl = DataLoader(ds, batch_size=args.batch, shuffle=True)
+
+    # ---- model: embed → GRUCell → linear head ----
+    emb   = nn.Linear(INPUT_DIM, EMBED_DIM)
+    gru   = nn.GRUCell(EMBED_DIM, GRU_DIM)
+    head  = nn.Linear(GRU_DIM, C)
+
+    # Xavier init
+    for p in emb.parameters():
+        if p.dim() > 1: nn.init.xavier_uniform_(p)
+    for p in head.parameters():
+        if p.dim() > 1: nn.init.xavier_uniform_(p)
+
+    params = list(emb.parameters()) + list(gru.parameters()) + list(head.parameters())
+    optimizer = torch.optim.Adam(params, lr=args.lr, weight_decay=1e-4)
+    criterion = nn.CrossEntropyLoss()
+
+    def forward_batch(xb):
+        """xb: (batch, T, INPUT_DIM) → logits (batch, C)."""
+        B, T, _ = xb.shape
+        # z-normalise per-coordinate with training-set stats
+        xb = (xb - mean_t) / std_t
+        hidden = torch.zeros(B, GRU_DIM)
+        for t in range(T):
+            inp   = xb[:, t, :]            # (B, INPUT_DIM)
+            e     = torch.tanh(emb(inp))   # (B, EMBED_DIM)
+            hidden = gru(e, hidden)         # (B, GRU_DIM)
+        return head(hidden)                 # (B, C)
+
+    t0 = time.time()
+    for epoch in range(args.epochs):
+        emb.train(); gru.train(); head.train()
+        running = 0.0
+        for xb, yb in dl:
+            optimizer.zero_grad()
+            logits = forward_batch(xb)
+            loss = criterion(logits, yb)
+            loss.backward()
+            optimizer.step()
+            running += loss.item()
+
+        if epoch % 10 == 0 or epoch == args.epochs - 1:
+            emb.eval(); gru.eval(); head.eval()
+            with torch.no_grad():
+                train_pred = forward_batch(win_train).argmax(1)
+                test_pred  = forward_batch(win_test).argmax(1)
+                tr_acc = float((train_pred == y_train).float().mean())
+                te_acc = float((test_pred == y_test).float().mean())
+            avg = running / max(1, len(dl))
+            print(f"  epoch {epoch:>3}/{args.epochs}  loss {avg:.4f}  "
+                  f"train_acc {tr_acc:.3f}  val_acc {te_acc:.3f}")
+
+    elapsed = time.time() - t0
+    print(f"\n⏱ Trained in {elapsed:.1f}s on CPU (torch GRU)")
+
+    emb.eval(); gru.eval(); head.eval()
+    with torch.no_grad():
+        yp = forward_batch(win_test).argmax(1).numpy()
+    te_acc = float((yp == yenc[test_idx]).mean())
+    print(f"✅ Final validation accuracy: {te_acc:.0%} on {len(test_idx)} held-out takes")
+    for lbl, i in lab2idx.items():
+        mask = yenc[test_idx] == i
+        if mask.sum():
+            print(f"   {lbl:<14} {int((yp[mask] == i).sum())}/{int(mask.sum())} correct")
+    if te_acc < 0.6:
+        print("⚠ Accuracy below 60% — record more takes per sign (aim 8-12) and retrain.")
+
+    # ---- export plain-JSON weights consumed by the JS worker predictGlu() ----
+    def arr2list(a, decimals=6):
+        if hasattr(a, "detach"):
+            a = a.detach().cpu().numpy()
+        return [float(round(v, decimals)) for v in np.asarray(a).reshape(-1)]
+
+    payload = {
+        "format": "ishaara-sign-gru-v1",
+        "labels": labels,
+        "inputDim": INPUT_DIM,
+        "embedDim": EMBED_DIM,
+        "hiddenDim": GRU_DIM,
+        "windowSize": WINDOW,
+        "mean": arr2list(mean_t),
+        "std":  arr2list(std_t),
+        "weights": {
+            "emb_w":   arr2list(emb.weight),
+            "emb_b":   arr2list(emb.bias),
+            "gru_w_ih": arr2list(gru.weight_ih),
+            "gru_b_ih": arr2list(gru.bias_ih),
+            "gru_w_hh": arr2list(gru.weight_hh),
+            "gru_b_hh": arr2list(gru.bias_hh),
+            "head_w":  arr2list(head.weight),
+            "head_b":  arr2list(head.bias),
+        },
+        "train": {
+            "trainAcc": round(float((forward_batch(win_train).argmax(1) == y_train).float().mean()), 4),
+            "valAcc":   round(te_acc, 4),
+            "samples":  len(samples),
+            "epochs":   args.epochs,
+            "elapsed":  round(elapsed, 1),
+        },
+    }
+
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
+    kb = os.path.getsize(args.out) / 1024
+    print(f"💾 GRU model exported → {args.out} ({kb:.0f} KB)")
     print(f"   Live inference will activate in the app for: {', '.join(labels)}")
 
 
