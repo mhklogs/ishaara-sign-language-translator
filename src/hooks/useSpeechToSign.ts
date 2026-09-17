@@ -15,6 +15,8 @@ export function useSpeechToSign(
   const [isListening, setIsListening] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [glossResult, setGlossResult] = useState<string[]>([]);
+  const [supported, setSupported] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
@@ -24,6 +26,8 @@ export function useSpeechToSign(
 
     if (!SpeechRecognition) {
       console.warn("Web Speech API is not supported in this browser environment.");
+      setSupported(false);
+      setError("Speech recognition isn't supported in this browser — type a phrase instead and tap Translate.");
       return;
     }
 
@@ -32,9 +36,22 @@ export function useSpeechToSign(
     recognition.interimResults = false;
     recognition.lang = language;
 
-    recognition.onstart = () => setIsListening(true);
+    recognition.onstart = () => {
+      setIsListening(true);
+      setError(null);
+    };
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (event: any) => {
+      setIsListening(false);
+      const code = event?.error;
+      if (code === "not-allowed" || code === "service-not-allowed") {
+        setError("Microphone access was denied. Allow mic permission in the browser, then tap the mic again.");
+      } else if (code === "no-speech") {
+        setError(null); // transient silence, not a blocker
+      } else if (code) {
+        setError(`Speech recognition error: ${code}. Type a phrase instead and tap Translate.`);
+      }
+    };
 
     recognition.onresult = async (event: any) => {
       const resultText = event.results[0][0].transcript;
@@ -122,6 +139,8 @@ Text: "${resultText}"`
     transcription,
     glossResult,
     startListening,
-    stopListening
+    stopListening,
+    supported,
+    error,
   };
 }

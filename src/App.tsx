@@ -113,6 +113,8 @@ export default function App() {
     transcription: voiceTranscription,
     startListening: startVoiceCapture,
     stopListening: stopVoiceCapture,
+    supported: micSupported,
+    error: micError,
   } = useSpeechToSign(onSpeechGlossReady, {
     dialect: dialect === "Pakistani Sign Language" ? "PSL" : "ISL",
     language: dialect === "Pakistani Sign Language" ? "ur-PK" : "en-US"
@@ -164,6 +166,7 @@ export default function App() {
     isLoading: mediaPipeLoading,
     startTracking: startCamTracking,
     stopTracking: stopCamTracking,
+    error: camError,
   } = useMediaPipe(onFrameCaptured);
 
   const toggleToken = useCallback((token: string) => {
@@ -687,8 +690,15 @@ Text to translate: "${textTarget}"`
                     />
                     {!isCamActive && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 bg-zinc-950/80">
-                        <span className="text-2xl mb-1">📷</span>
-                        <span className="text-[11px] font-bold text-zinc-300">Camera Standby</span>
+                        <span className="text-2xl mb-1">{camError ? "⚠️" : "📷"}</span>
+                        <span className={cn("text-[11px] font-bold", camError ? "text-rose-300" : "text-zinc-300")}>
+                          {camError ? "Camera Unavailable" : "Camera Standby"}
+                        </span>
+                        {camError && (
+                          <span className="mt-1.5 text-[10px] leading-relaxed text-zinc-400 max-w-[230px]">
+                            {camError}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -724,18 +734,31 @@ Text to translate: "${textTarget}"`
                     <div className="flex items-center gap-2.5">
                       <button
                         onClick={isMicListening ? stopVoiceCapture : startVoiceCapture}
+                        disabled={!micSupported}
                         className={cn(
                           "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
-                          isMicListening ? 'bg-red-500 text-white animate-pulse' : 'bg-[var(--brand-primary)] text-[var(--bg-main)]'
+                          isMicListening
+                            ? 'bg-red-500 text-white animate-pulse'
+                            : micSupported
+                              ? 'bg-[var(--brand-primary)] text-[var(--bg-main)]'
+                              : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
                         )}
                       >
                         <MicIcon className="h-4.5 w-4.5" />
                       </button>
                       <div className="flex-1 min-w-0">
-                        <span className="text-[10.5px] font-medium block truncate">
-                          {isMicListening ? 'Recording...' : voiceTranscription || 'Microphone standby'}
+                        <span className={cn("text-[10.5px] font-medium block truncate", micError && !isMicListening ? "text-rose-400" : "")}>
+                          {isMicListening
+                            ? 'Recording...'
+                            : micError || voiceTranscription || 'Microphone standby'}
                         </span>
-                        <LevelMeter active={isMicListening} />
+                        {micError && !isMicListening ? (
+                          <span className="block text-[9.5px] leading-snug text-zinc-500 mt-0.5">
+                            Text input below still works — type and tap Translate.
+                          </span>
+                        ) : (
+                          <LevelMeter active={isMicListening} />
+                        )}
                       </div>
                     </div>
                   </div>

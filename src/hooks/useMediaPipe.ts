@@ -138,7 +138,7 @@ export function useMediaPipe(
       try {
         await loadMediaPipeScripts();
       } catch (err) {
-        setError('Failed to initialize MediaPipe Holistic engine.');
+        setError('Could not load the pose engine (network blocked?). Text and speech translation still work normally.');
       } finally {
         setIsLoading(false);
       }
@@ -215,7 +215,19 @@ export function useMediaPipe(
       animationFrameRef.current = requestAnimationFrame(processFrame);
     } catch (err: any) {
       console.error("Webcam initialization failed:", err);
-      setError(err.message || "Failed to initialize MediaPipe Holistic.");
+      let message = err?.message || "Failed to initialize the pose engine.";
+      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+        message = "Camera permission was denied. Allow webcam access in your browser, then press Start Camera to retry.";
+      } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+        message = "No camera was found on this device.";
+      } else if (err?.name === "NotReadableError") {
+        message = "Your camera is in use by another application. Close it and press Start Camera to retry.";
+      } else if (err?.name === "OverconstrainedError") {
+        message = "Camera constraints could not be satisfied on this device.";
+      } else if (String(err?.message || "").includes("Holistic")) {
+        message = "Could not load the pose engine (network blocked?). Sign translation via text/speech still works.";
+      }
+      setError(message);
       stopTracking();
     }
   }, [handleResults, loadMediaPipeScripts, stopTracking]);
