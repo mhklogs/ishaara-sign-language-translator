@@ -7,6 +7,8 @@
 > **not** measured and are marked `[TO BE MEASURED]`. Market analysis is research-based;
 > unverifiable figures are marked `[TO BE VALIDATED]`.
 
+Nine documents: research (`01`), requirements (`02`–`03`), design (`04`–`06`), process (`07`) and delivery planning (`08-roadmap.md`).
+
 | Document | Contents |
 | --- | --- |
 | `README.md` | Project readme (copy of the repository root readme) |
@@ -17,6 +19,7 @@
 | `05-use-cases.md` | Use cases derived from detected user-facing routes |
 | `06-architecture.md` | Detected components, data stores, integrations, env vars |
 | `07-sdlc-lifecycle.md` | SDLC methodology for this build & artifact traceability |
+| `08-roadmap.md` | Delivery roadmap: MoSCoW backlog, sprint plan, ceremonies, burndown, rollout & risks |
 
 ## Detected at a glance
 

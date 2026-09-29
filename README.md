@@ -99,3 +99,9 @@ Hospitals, banks/NADRA counters, classrooms, government offices, online meetings
 Hassaan Abdullah (23-ARID-896) · Khubaib Ul Hassan (23-ARID-902) — Final Year Project, September 2026.
 
 Built for accessibility, owned by the community. 🫶
+
+## What changed (v3)
+
+- v1→v2: research-based market analysis + SDLC documentation (`documents/01–07`).
+- v2→v3: delivery roadmap with sprint plan and ceremonies (`documents/08-roadmap.md`); this changelog.
+- Known gap being carried into the v3 roadmap: this README's deploy section still points at an older Vercel host. The roadmap's Sprint 3 reconciles it with production and adds the missing CI gate (NFR-6.3) and the missing model-accuracy measurement (`01-market-analysis.md` §6).
